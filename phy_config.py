@@ -13,8 +13,8 @@ from phy import IPlugin
 c = get_config()
 c.Plugins.dirs = [r'/home/ariel/.phy/plugins']
 c.TemplateGUI.plugins = []  # list of plugin names ti load in the TemplateGUI
-c.TemplateGUI.plugins += ['myColumnsPlugin']  # list of plugin names ti load in the TemplateGUI
-c.TemplateGUI.plugins += ['CustomFeatureViewPlugin']  # list of plugin names ti load in the TemplateGUI
-#c.TemplateGUI.plugins += ['showNSpikesChannelsPlugin']  # list of plugin names ti load in the TemplateGUI
-c.TemplateGUI.plugins += ['SingleChannelViewPlugin']  # list of plugin names ti load in the TemplateGUI
-c.TemplateGUI.plugins += ['ClusterViewStylingPlugin']  # change colors for good mua and noise
+c.TemplateGUI.plugins += ['myColumnsPlugin']  # remove unnecesary columns
+c.TemplateGUI.plugins += ['CustomFeatureViewPlugin']  # add 3 principal component
+#c.TemplateGUI.plugins += ['showNSpikesChannelsPlugin']  # shown only N channels
+c.TemplateGUI.plugins += ['SingleChannelViewPlugin']  # Plugin to clean each cluster through removing waveforms
+c.TemplateGUI.plugins += ['ClusterViewStylingPlugin']  # change colors for mua

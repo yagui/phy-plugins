@@ -5,10 +5,10 @@ PLUGINS:=$(wildcard plugins/*.py)
 
 MKDIR=mkdir -p $(PLUGINS_INSTALL_DIR)
 
-ln: phy_config.py $(PLUGINS)
+simlink: clean phy_config.py $(PLUGINS)
 	$(MKDIR)
 	ln -s $(REPO_DIR)/phy_config.py $(INSTALL_DIR)
-	$(foreach file,$(PLUGINS), ln -s $(REPO_DIR)/$(file) $(INSTALL_DIR);)
+	$(foreach file,$(PLUGINS), ln -s $(REPO_DIR)/$(file) $(PLUGINS_INSTALL_DIR);)
 
 copy: phy_config.py $(PLUGINS)
 	$(MKDIR)
