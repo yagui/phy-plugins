@@ -17,6 +17,13 @@ from phy.plot import PlotCanvas, NDC, extend_bounds
 class SingleChannelView(LassoMixin,ManualClusteringView):
     """All OpenGL views derive from ManualClusteringView."""
 
+
+#    default_shortcuts = {
+#        'next_channel': 'alt+d',
+#        'previous_channel': 'alt+e',
+#    }
+
+
     def __init__(self, model=None):
         """
         Typically, the constructor takes as arguments *functions* that take as input
@@ -90,8 +97,11 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
 
         """
         self.canvas.add_visual(self.visual)
+        self.cluster_ids = None
         self.cluster_id = None
-        self.channel_id = None
+        self.channel_ids = None
+        self.wavefs = None
+        self.current_channel_idx = None
 
     def on_select(self, cluster_ids=(), **kwargs):
         """
@@ -112,29 +122,31 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
         
         if self.cluster_id != cluster_ids[0]:
             self.cluster_id = cluster_ids[0]
-            """
-            We update the number of boxes in the stacked layout, which is the number of
-            selected clusters.
-            """
+
+            self.channel_ids = self.model.get_cluster_channels(self.cluster_id)
+            self.spike_ids = self.model.get_cluster_spikes(self.cluster_id)
+            self.wavefs = self.model.get_waveforms(self.spike_ids,channel_ids=self.channel_ids)
 
             """
-            We obtain the waveforms for the first cluster selected.
+            We select the first channel
             """
-            self.setChannel(self.model.get_cluster_channels(self.cluster_id)[0])
-    
-
+            self.setChannel(0)
+        
 
     def plotWaveforms(self):
 
-        self.spikes_id = self.model.get_cluster_spikes(self.cluster_id)
-        wavefs = self.model.get_waveforms(self.spikes_id,channel_ids=[self.channel_id])[:,:]
-        self.wavefs = wavefs[:,:,0]
+        Nspk,Ntime,Nchan = self.wavefs.shape
 
-        """
-        We update the number of boxes in the stacked layout, which is the number of
-        selected clusters.
-        """
-        self.canvas.stacked.n_boxes = 1
+#        """
+#        We update the number of boxes in the stacked layout, which is the number of
+#        selected clusters.
+#        """
+#        self.canvas.stacked.n_boxes = 1
+
+#        """
+#        We obtain the template data.
+#        """
+#        bunchs = {cluster_id: self.templates(cluster_id).data for cluster_id in cluster_ids}
 
         """
         For performance reasons, it is best to use as few visuals as possible. In this example,
@@ -155,12 +167,11 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
 
         """
         self.visual.reset_batch()
+        self.text_visual.reset_batch()
 
         """
         We iterate through all selected clusters.
         """
-
-
 
         """
         In this example, we just keep the peak channel. Note that `bunch.template` is a
@@ -169,13 +180,14 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
         so the first one is the peak channel. The channel ids can be found in
         `bunch.channel_ids`.
         """
+        #y = bunch.template[:, 0]
 
         """
         We decide to use, on the x axis, values ranging from -1 to 1. This is the
         standard viewport in OpenGL and phy.
         """
         #x = np.linspace(-1., 1., wavefs.shape[1])
-        x = np.tile(np.linspace(-1., 1., self.wavefs.shape[1]), (self.wavefs.shape[0], 1))
+        x = np.tile(np.linspace(-1., 1., Ntime), (Nspk, 1))
 
         """
         phy requires you to specify explicitly the x and y range of the plots.
@@ -189,7 +201,7 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
         Here, the x range is (-1, 1), and the y range is (m, M) where m and M are
         respectively the min and max of the template.
         """
-        M=np.max(np.abs(self.wavefs))
+        M=np.max(np.abs(self.wavefs[:,:,self.current_channel_idx]))
         self.data_bounds = (-1, -M, +1, M)
 
         """
@@ -206,14 +218,14 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
         In the stacked layout, this is just an integer identifying the subplot index, from
         top to bottom. Note that in the grid view, the box index is a pair (row, col).
         """
-        self.visual.add_batch_data(
-            x=x, y=self.wavefs, color=color, data_bounds=self.data_bounds, box_index=0)
 
-       # Add channel labels.
+        self.visual.add_batch_data(
+                x=x, y=self.wavefs[:,:,self.current_channel_idx], color=color, data_bounds=self.data_bounds, box_index=0)
+
+        # Add channel labels.
         #if not self.do_show_labels:
         #    return
-        self.text_visual.reset_batch()
-        label = '{a}'.format(a=self.channel_id)
+        label = '{a}'.format(a=self.channel_ids[self.current_channel_idx])
         self.text_visual.add_batch_data(
                 pos=[-1, 0],
                 text=str(label),
@@ -221,37 +233,6 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
                 box_index=0,
             )
         self.canvas.update_visual(self.text_visual)
-
-
-        #ax_db = self.data_bounds
-        #hpos = np.tile([[-1, 0, 1, 0]], (1, 1))
-        #self.line_visual.add_batch_data(
-        #    pos=hpos,
-        #    color=self.ax_color,
-        #    data_bounds=ax_db,
-        #    box_index=0,
-        #)
-
-#        # Vertical ticks every millisecond.
-#        steps = np.arange(np.round(self.wave_duration * 1000))
-#        # A vline every millisecond.
-#        x = .001 * steps
-#        # Scale to [-1, 1], same coordinates as the waveform points.
-#        x = -1 + 2 * x / self.wave_duration
-#        # Take overlap into account.
-#        x = _overlap_transform(x, offset=bunch.offset, n=bunch.n_clu, overlap=self.overlap)
-#        x = np.tile(x, len(channel_ids_loc))
-#        # Generate the box index.
-#        box_index = _index_of(channel_ids_loc, self.channel_ids)
-#        box_index = np.repeat(box_index, x.size // len(box_index))
-#        assert x.size == box_index.size
-#        self.tick_visual.add_batch_data(
-#            x=x, y=np.zeros_like(x),
-#            data_bounds=ax_db,
-#            box_index=box_index,
-#        )
-#
-
 
 
         """
@@ -265,28 +246,36 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
         """
         self.canvas.update()
     
-
-    def setChannel(self,channel_id):
-        self.channel_id = channel_id
+    def setChannel(self,channel_idx):
+        self.current_channel_idx = channel_idx
         self.plotWaveforms()
+
+    def setNextChannel(self):
+        if self.current_channel_idx == len(self.channel_ids):
+            return
+        self.setChannel(self.current_channel_idx+1)
+
+    def setPrevChannel(self):
+        if self.current_channel_idx == 0:
+            return
+        self.setChannel(self.current_channel_idx-1)
 
     def on_request_split(self, sender=None):
         """Return the spikes enclosed by the lasso."""
         if (self.canvas.lasso.count < 3 or not len(self.cluster_ids)):  # pragma: no cover
             return np.array([], dtype=np.int64)
-        # Get all points from all clusters.
+
         pos = []
         spike_ids = []
+
+        # Transform each waveform in a set a points
         x = np.linspace(-1., 1., self.wavefs.shape[1])
 
-        # each item is a Bunch with attribute `pos` et `spike_ids`
-        #bunchs = self.get_clusters_data(load_all=True)
-        #if bunchs is None:
-        #    return
-        for idx,spike in enumerate(self.spikes_id):
-            points = np.c_[x,self.wavefs[idx]]
+        for idx,spike in enumerate(self.spike_ids):
+            points = np.c_[x,self.wavefs[idx,:,self.current_channel_idx]]
             pos.append(points)
             spike_ids.append([spike]*len(x))
+
         if not pos:  # pragma: no cover
             logger.warning("Empty lasso.")
             return np.array([])
@@ -297,57 +286,17 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
         # Find lassoed spikes.
         ind = self.canvas.lasso.in_polygon(pos)
         self.canvas.lasso.clear()
-        return np.unique(spike_ids[ind])
+
+        # Return all spikes not lassoed, so the selected cluster is still the same we are working on
+        spikes_to_remove = np.unique(spike_ids[ind])
+        keepspikes=np.isin(self.spike_ids,spikes_to_remove,assume_unique=True,invert=True)
+        A=self.spike_ids[self.spike_ids != spikes_to_remove][0]
+        return self.spike_ids[keepspikes]
     
-    def on_select_channel(self, sender=None, channel_id=None, key=None, button=None):
-        """Respond to the click on a channel from another view, and update the
-        relevant subplots."""
-        print(channel_id)
-        if self.channel_id != channel_id:
-            self.setChannel(channel_id)
-#        channels = self.channel_ids
-#        if channels is None:
-#            return
-#        if len(channels) == 1:
-#            self.plot()
-#            return
-#        assert len(channels) >= 2
-#        # Get the axis from the pressed button (1, 2, etc.)
-#        if key is not None:
-#            d = np.clip(len(channels) - 1, 0, key - 1)
-#        else:
-#            d = 0 if button == 'Left' else 1
-#        # Change the first or second best channel.
-#        old = channels[d]
-#        # Avoid updating the view if the channel doesn't change.
-#        if channel_id == old:
-#            return
-#        channels[d] = channel_id
-#        # Ensure that the first two channels are different.
-#        if channels[1 - min(d, 1)] == channel_id:
-#            channels[1 - min(d, 1)] = old
-#        assert channels[0] != channels[1]
-#        # Remove duplicate channels.
-#        self.channel_ids = _uniq(channels)
-#        logger.debug("Choose channels %d and %d in feature view.", *channels[:2])
-#        # Fix the channels temporarily.
-#        self.plot(fixed_channels=True)
-#        self.update_status()
  
 class SingleChannelViewPlugin(IPlugin):
     def attach_to_controller(self, controller):
         def create_my_view():
             return SingleChannelView(model=controller.model)
 
-            @connect(sender=view)
-            def on_select_channel(sender, channel_id=None, key=None, button=None):
-                # Update the Selection object with the channel id clicked in the waveform view.
-                self.selection.channel_id = channel_id
-                
-
-
         controller.view_creator['SingleChannelView'] = create_my_view
-
-        # Open a view if there is not already one.
-        #controller.at_least_one_view('SingleChannelView')
-
