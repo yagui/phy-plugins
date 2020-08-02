@@ -210,6 +210,12 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
         1 by default).
         """
         color = selected_cluster_color(0)
+        colormedian = selected_cluster_color(1)
+        colorstd = selected_cluster_color(2)
+
+        x1 = np.linspace(-1., 1., Ntime)
+        medianCl = np.median(self.wavefs[:,:,self.current_channel_idx],axis=0)
+        stdCl = np.std(self.wavefs[:,:,self.current_channel_idx],axis=0)
 
         """
         The plot visual takes as input the x and y coordinates of the points, the color,
@@ -222,6 +228,12 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
         self.visual.add_batch_data(
                 x=x, y=self.wavefs[:,:,self.current_channel_idx], color=color, data_bounds=self.data_bounds, box_index=0)
 
+        self.visual.add_batch_data(
+                x=x1, y=medianCl, color=colormedian, data_bounds=self.data_bounds, box_index=0)
+        self.visual.add_batch_data(
+                x=x1, y=medianCl+3*stdCl, color=colorstd, data_bounds=self.data_bounds, box_index=0)
+        self.visual.add_batch_data(
+                x=x1, y=medianCl-3*stdCl, color=colorstd, data_bounds=self.data_bounds, box_index=0)
         # Add channel labels.
         #if not self.do_show_labels:
         #    return
@@ -233,7 +245,6 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
                 box_index=0,
             )
         self.canvas.update_visual(self.text_visual)
-
 
         """
         After the loop, this special call automatically builds the data to upload to the GPU
@@ -290,8 +301,11 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
         # Return all spikes not lassoed, so the selected cluster is still the same we are working on
         spikes_to_remove = np.unique(spike_ids[ind])
         keepspikes=np.isin(self.spike_ids,spikes_to_remove,assume_unique=True,invert=True)
-        A=self.spike_ids[self.spike_ids != spikes_to_remove][0]
-        return self.spike_ids[keepspikes]
+        A=self.spike_ids[self.spike_ids != spikes_to_remove]
+        if len(A)>0:
+            return self.spike_ids[keepspikes]
+        else:
+            return np.array([], dtype=np.int64)
     
  
 class SingleChannelViewPlugin(IPlugin):
