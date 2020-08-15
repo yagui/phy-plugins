@@ -1,5 +1,6 @@
 # import from plugins/waveformCuttingView.py
-"""Show how to write a custom OpenGL view. This is for advanced users only."""
+# Ariel Burman - 2020
+# 2020
 
 import numpy as np
 
@@ -14,6 +15,9 @@ from phy import connect
 from phylib.utils.geometry import range_transform
 from phy.plot import PlotCanvas, NDC, extend_bounds
 
+
+
+
 class SingleChannelView(LassoMixin,ManualClusteringView):
     """All OpenGL views derive from ManualClusteringView."""
 
@@ -22,7 +26,6 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
 #        'next_channel': 'alt+d',
 #        'previous_channel': 'alt+e',
 #    }
-
 
     def __init__(self, model=None):
         """
@@ -34,7 +37,7 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
         super(SingleChannelView, self).__init__()
         self.canvas.enable_axes()
         self.canvas.enable_lasso()
-
+        
         """
         The View instance contains a special `canvas` object which is a `̀PlotCanvas` instance.
         This class derives from `BaseCanvas` which itself derives from the PyQt5 `QOpenGLWindow`.
@@ -56,6 +59,7 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
 
         """
         self.canvas.set_layout('stacked', n_plots=1)
+        #self.canvas.set_layout('boxed',box_pos=np.zeros((1, 2)))
         self.text_visual = TextVisual()
         self.canvas.add_visual(self.text_visual)
 
@@ -102,7 +106,7 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
         self.channel_ids = None
         self.wavefs = None
         self.current_channel_idx = None
-
+    
     def on_select(self, cluster_ids=(), **kwargs):
         """
         The main method to implement in ManualClusteringView is `on_select()`, called whenever
@@ -130,12 +134,14 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
             """
             We select the first channel
             """
-            self.setChannel(0)
+            self.setChannelIdx(0)
         
 
     def plotWaveforms(self):
 
         Nspk,Ntime,Nchan = self.wavefs.shape
+
+        print(Ntime)
 
 #        """
 #        We update the number of boxes in the stacked layout, which is the number of
@@ -209,13 +215,18 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
         values between 0 and 1 for RGBA: red, green, blue, alpha channel (transparency,
         1 by default).
         """
-        color = selected_cluster_color(0)
-        colormedian = selected_cluster_color(1)
-        colorstd = selected_cluster_color(2)
+        colorwavef = selected_cluster_color(0)
+        colormedian = selected_cluster_color(3)#(1,156/256,0,.5)#selected_cluster_color(1)
+        colorstd = (0,1,0,1)#selected_cluster_color(2)
+        colorqtl = (1,1,0,1)
+        test = selected_cluster_color(10)
 
         x1 = np.linspace(-1., 1., Ntime)
-        medianCl = np.median(self.wavefs[:,:,self.current_channel_idx],axis=0)
-        stdCl = np.std(self.wavefs[:,:,self.current_channel_idx],axis=0)
+        if Nspk>100:
+            medianCl = np.median(self.wavefs[:,:,self.current_channel_idx],axis=0)
+            stdCl = np.std(self.wavefs[:,:,self.current_channel_idx],axis=0)
+            q1 = np.quantile(self.wavefs[:,:,self.current_channel_idx],.01,axis=0,interpolation='higher')
+            q9 = np.quantile(self.wavefs[:,:,self.current_channel_idx],.99,axis=0,interpolation='lower')
 
         """
         The plot visual takes as input the x and y coordinates of the points, the color,
@@ -226,14 +237,52 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
         """
 
         self.visual.add_batch_data(
-                x=x, y=self.wavefs[:,:,self.current_channel_idx], color=color, data_bounds=self.data_bounds, box_index=0)
+                x=x, y=self.wavefs[:,:,self.current_channel_idx], color=colorwavef, data_bounds=self.data_bounds, box_index=0)
+
+        #axes
+        self.visual.add_batch_data(
+                x=x1, y=np.zeros((1,Ntime)), color=(1,1,1,1), data_bounds=self.data_bounds, box_index=0)
 
         self.visual.add_batch_data(
-                x=x1, y=medianCl, color=colormedian, data_bounds=self.data_bounds, box_index=0)
+                x=np.array([-1,-1]), y=np.array([-M,M]), color=(1,1,1,1), data_bounds=self.data_bounds, box_index=0)
         self.visual.add_batch_data(
-                x=x1, y=medianCl+3*stdCl, color=colorstd, data_bounds=self.data_bounds, box_index=0)
+                x=np.array([-.36,-.36]), y=np.array([-M,M]), color=(1,1,1,.5), data_bounds=self.data_bounds, box_index=0)
         self.visual.add_batch_data(
-                x=x1, y=medianCl-3*stdCl, color=colorstd, data_bounds=self.data_bounds, box_index=0)
+                x=np.array([.36,.36]), y=np.array([-M,M]), color=(1,1,1,.5), data_bounds=self.data_bounds, box_index=0)
+        
+        #stats
+        if Nspk>100:
+            self.visual.add_batch_data(
+                    x=x1, y=medianCl, color=colormedian, data_bounds=self.data_bounds, box_index=0)
+            self.visual.add_batch_data(
+                    x=x1, y=medianCl+3*stdCl, color=colorstd, data_bounds=self.data_bounds, box_index=0)
+            self.visual.add_batch_data(
+                    x=x1, y=medianCl-3*stdCl, color=colorstd, data_bounds=self.data_bounds, box_index=0)
+            self.visual.add_batch_data(
+                    x=x1, y=q1, color=colorqtl, data_bounds=self.data_bounds, box_index=0)
+            self.visual.add_batch_data(
+                    x=x1, y=q9, color=colorqtl, data_bounds=self.data_bounds, box_index=0)
+
+        #axes label
+        if M*0.195<1000:
+            axescalelabel = '{a:.1f} uV'.format(a=M*0.195)
+        else:
+            axescalelabel = '{a:.1f} mV'.format(a=M*0.000195)
+
+        self.text_visual.add_batch_data(
+                pos=[-1, 1],
+                text=axescalelabel,
+                anchor=[1.25, 0],
+                box_index=0,
+            )
+        
+        self.text_visual.add_batch_data(
+                pos=[-1, -1],
+                text='-'+axescalelabel,
+                anchor=[1.25, 0],
+                box_index=0,
+            )
+
         # Add channel labels.
         #if not self.do_show_labels:
         #    return
@@ -257,19 +306,26 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
         """
         self.canvas.update()
     
-    def setChannel(self,channel_idx):
+    def setChannel(self,channel_id):
+        self.channel_ids
+        itemindex = np.where(self.channel_ids==channel_id)[0]
+        if len(itemindex):
+            self.setChannelIdx(itemindex[0])
+        #self.plotWaveforms()
+
+    def setChannelIdx(self,channel_idx):
         self.current_channel_idx = channel_idx
         self.plotWaveforms()
 
-    def setNextChannel(self):
-        if self.current_channel_idx == len(self.channel_ids):
+    def setNextChannelIdx(self):
+        if self.current_channel_idx == len(self.channel_ids)-1:
             return
-        self.setChannel(self.current_channel_idx+1)
+        self.setChannelIdx(self.current_channel_idx+1)
 
-    def setPrevChannel(self):
+    def setPrevChannelIdx(self):
         if self.current_channel_idx == 0:
             return
-        self.setChannel(self.current_channel_idx-1)
+        self.setChannelIdx(self.current_channel_idx-1)
 
     def on_request_split(self, sender=None):
         """Return the spikes enclosed by the lasso."""
@@ -309,8 +365,33 @@ class SingleChannelView(LassoMixin,ManualClusteringView):
     
  
 class SingleChannelViewPlugin(IPlugin):
+
     def attach_to_controller(self, controller):
         def create_my_view():
             return SingleChannelView(model=controller.model)
 
         controller.view_creator['SingleChannelView'] = create_my_view
+
+        @connect
+        def on_gui_ready(sender, gui):
+
+            self.view = gui.get_view('SingleChannelView')
+
+            @controller.supervisor.actions.add(shortcut='f')
+            def next_channel():
+                v=gui.get_view('SingleChannelView')
+                if v:
+                    v.setNextChannelIdx()
+
+            @controller.supervisor.actions.add(shortcut='r')
+            def prev_channel():
+                v=gui.get_view('SingleChannelView')
+                if v:
+                    v.setPrevChannelIdx()
+
+        @connect
+        def on_select_channel(sender,channel_id,key,button):
+            print(button)
+            self.view.setChannel(channel_id)
+
+

@@ -18,5 +18,6 @@ c.TemplateGUI.plugins += ['CustomFeatureViewPlugin']  # add 3 principal componen
 #c.TemplateGUI.plugins += ['showNSpikesChannelsPlugin']  # shown only N channels
 c.TemplateGUI.plugins += ['SingleChannelViewPlugin']  # Plugin to clean each cluster through removing waveforms
 c.TemplateGUI.plugins += ['ClusterViewStylingPlugin']  # change colors for mua
-#c.TemplateGUI.plugins += ['kmSplitPlugin']  # change colors for mua
+c.TemplateGUI.plugins += ['kmSplitPlugin']  # kmeans, split in 2
+c.TemplateGUI.plugins += ['FilterNotNoisePlugin']  # show only good and mua
 #c.TemplateGUI.plugins += ['SplitShortISI']  # change colors for mua
