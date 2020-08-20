@@ -226,7 +226,6 @@ class WaveformClusteringViewPlugin(IPlugin):
 
         @connect
         def on_select_channel(sender,channel_id,key,button):
-            print(button)
             self.view.setChannel(channel_id)
 
 
