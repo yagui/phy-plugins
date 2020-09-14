@@ -13,13 +13,11 @@ from phy import IPlugin
 c = get_config()
 c.Plugins.dirs = [r'/home/ariel/.phy/plugins']
 c.TemplateGUI.plugins = []  # list of plugin names ti load in the TemplateGUI
+
 c.TemplateGUI.plugins += ['myColumnsPlugin']  # remove unnecesary columns
 c.TemplateGUI.plugins += ['CustomFeatureViewPlugin']  # add 3 principal component
 c.TemplateGUI.plugins += ['WaveformClusteringViewPlugin']  # Plugin to clean each cluster through removing waveforms
 c.TemplateGUI.plugins += ['ClusterViewStylingPlugin']  # change colors for mua
 c.TemplateGUI.plugins += ['kmSplitPlugin']  # kmeans, split in 2
 c.TemplateGUI.plugins += ['FilterNotNoisePlugin']  # show only good and mua
-#c.TemplateGUI.plugins += ['showNSpikesChannelsPlugin']  # shown only N channels
-#c.TemplateGUI.plugins += ['ExampleOpenGLViewPlugin']  # show only good and mua
-#c.TemplateGUI.plugins += ['MinimalViewPlugin']  # show only good and mua
-#c.TemplateGUI.plugins += ['SplitShortISI']  # change colors for mua
+

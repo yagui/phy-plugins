@@ -1,5 +1,5 @@
 # Ariel Burman - 2020
-# 2020
+# 
 
 import numpy as np
 
@@ -17,10 +17,10 @@ from phy.plot import PlotCanvas, NDC
 
 class WaveformClusteringView(LassoMixin,ManualClusteringView):
 
-#    default_shortcuts = {
-#        'next_channel': 'alt+d',
-#        'previous_channel': 'alt+e',
-#    }
+    default_shortcuts = {
+        'next_channel': 'f',
+        'previous_channel': 'r',
+    }
 
     def __init__(self, model=None):
 
@@ -29,15 +29,18 @@ class WaveformClusteringView(LassoMixin,ManualClusteringView):
         self.canvas.enable_lasso()
         
         self.text_visual = TextVisual()
-        self.canvas.add_visual(self.text_visual)
+        self.canvas.add_visual(self.text_visual, exclude_origins=(self.canvas.panzoom,))
 
         self.model = model
+
+        self.gain = 0.195
+        self.Fs = 30  # kHz
 
         self.visual = PlotVisual()
 
         self.canvas.add_visual(self.visual)
-        self.canvas.panzoom.zoom = self.canvas.panzoom._default_zoom = (.94, .98)
-        self.canvas.panzoom.pan = self.canvas.panzoom._default_pan = (0.03, 0)
+        self.canvas.panzoom.zoom = self.canvas.panzoom._default_zoom = (.97, .95)
+        self.canvas.panzoom.pan = self.canvas.panzoom._default_pan = (-.01, 0)
         self.cluster_ids = None
         self.cluster_id = None
         self.channel_ids = None
@@ -66,17 +69,23 @@ class WaveformClusteringView(LassoMixin,ManualClusteringView):
         self.visual.reset_batch()
         self.text_visual.reset_batch()
 
-        x = np.tile(np.linspace(-1., 1., Ntime), (Nspk, 1))
+        x = np.tile(np.linspace(-Ntime/2/self.Fs, Ntime/2/self.Fs, Ntime), (Nspk, 1))
 
         M=np.max(np.abs(self.wavefs[:,:,self.current_channel_idx]))
-        self.data_bounds = (-1, -M, +1, M)
+        #print(M*self.gain)
+        if M*self.gain<100:
+            M = 10*np.ceil(M*self.gain/10)
+        elif M*self.gain<1000:
+            M = 100*np.ceil(M*self.gain/100)
+        else:
+            M = 1000*np.floor(M*self.gain/1000)
+        self.data_bounds = (x[0][0], -M, x[0][-1], M)
 
         colorwavef = selected_cluster_color(0)
         colormedian = selected_cluster_color(3)#(1,156/256,0,.5)#selected_cluster_color(1)
         colorstd = (0,1,0,1)#selected_cluster_color(2)
         colorqtl = (1,1,0,1)
 
-        x1 = np.linspace(-1., 1., Ntime)
         if Nspk>100:
             medianCl = np.median(self.wavefs[:,:,self.current_channel_idx],axis=0)
             stdCl = np.std(self.wavefs[:,:,self.current_channel_idx],axis=0)
@@ -84,62 +93,47 @@ class WaveformClusteringView(LassoMixin,ManualClusteringView):
             q9 = np.quantile(self.wavefs[:,:,self.current_channel_idx],.99,axis=0,interpolation='lower')
 
         self.visual.add_batch_data(
-                x=x, y=self.wavefs[:,:,self.current_channel_idx], color=colorwavef, data_bounds=self.data_bounds, box_index=0)
+                x=x, y=self.gain*self.wavefs[:,:,self.current_channel_idx], color=colorwavef, data_bounds=self.data_bounds, box_index=0)
 
-        #axes
-        self.visual.add_batch_data(
-                x=x1, y=np.zeros((1,Ntime)), color=(1,1,1,1), data_bounds=self.data_bounds, box_index=0)
-
-        self.visual.add_batch_data(
-                x=np.array([-1,-1]), y=np.array([-M,M]), color=(1,1,1,1), data_bounds=self.data_bounds, box_index=0)
-        self.visual.add_batch_data(
-                x=np.array([-.36,-.36]), y=np.array([-M,M]), color=(1,1,1,.5), data_bounds=self.data_bounds, box_index=0)
-        self.visual.add_batch_data(
-                x=np.array([.36,.36]), y=np.array([-M,M]), color=(1,1,1,.5), data_bounds=self.data_bounds, box_index=0)
-        
         #stats
         if Nspk>100:
+            x1 = x[0]
             self.visual.add_batch_data(
-                    x=x1, y=medianCl, color=colormedian, data_bounds=self.data_bounds, box_index=0)
+                    x=x1, y=self.gain*medianCl, color=colormedian, data_bounds=self.data_bounds, box_index=0)
             self.visual.add_batch_data(
-                    x=x1, y=medianCl+3*stdCl, color=colorstd, data_bounds=self.data_bounds, box_index=0)
+                    x=x1, y=self.gain*(medianCl+3*stdCl), color=colorstd, data_bounds=self.data_bounds, box_index=0)
             self.visual.add_batch_data(
-                    x=x1, y=medianCl-3*stdCl, color=colorstd, data_bounds=self.data_bounds, box_index=0)
+                    x=x1, y=self.gain*(medianCl-3*stdCl), color=colorstd, data_bounds=self.data_bounds, box_index=0)
             self.visual.add_batch_data(
-                    x=x1, y=q1, color=colorqtl, data_bounds=self.data_bounds, box_index=0)
+                    x=x1, y=self.gain*q1, color=colorqtl, data_bounds=self.data_bounds, box_index=0)
             self.visual.add_batch_data(
-                    x=x1, y=q9, color=colorqtl, data_bounds=self.data_bounds, box_index=0)
+                    x=x1, y=self.gain*q9, color=colorqtl, data_bounds=self.data_bounds, box_index=0)
 
-        #axes label
-        if M*0.195<1000:
-            axescalelabel = '{a:.1f} uV'.format(a=M*0.195)
-        else:
-            axescalelabel = '{a:.1f} mV'.format(a=M*0.000195)
-
+        #axes
         self.text_visual.add_batch_data(
-                pos=[-1, 1],
-                text=axescalelabel,
-                anchor=[1.25, 0],
+                pos=[.9, .98],
+                text='[uV]',
+                anchor=[-1, -1],
                 box_index=0,
             )
         
         self.text_visual.add_batch_data(
-                pos=[-1, -1],
-                text='-'+axescalelabel,
-                anchor=[1.25, 0],
+                pos=[-1, -.95],
+                text='[ms]',
+                anchor=[1, 1],
                 box_index=0,
             )
 
-        label = '{a}'.format(a=self.channel_ids[self.current_channel_idx])
+        label = 'Ch {a}'.format(a=self.channel_ids[self.current_channel_idx])
         self.text_visual.add_batch_data(
-                pos=[-1, 0],
+                pos=[-.98, .98],
                 text=str(label),
-                anchor=[-1.25, 0],
+                anchor=[1, -1],
                 box_index=0,
             )
-        self.canvas.update_visual(self.text_visual)
-
         self.canvas.update_visual(self.visual)
+        self.canvas.update_visual(self.text_visual)
+        self.canvas.axes.reset_data_bounds(self.data_bounds)
 
         self.canvas.update()
     
@@ -171,10 +165,11 @@ class WaveformClusteringView(LassoMixin,ManualClusteringView):
         pos = []
         spike_ids = []
 
-        x = np.linspace(-1., 1., self.wavefs.shape[1])
+        Ntime = self.wavefs.shape[1]
+        x = np.linspace(-Ntime/2/self.Fs, Ntime/2/self.Fs, Ntime)
 
         for idx,spike in enumerate(self.spike_ids):
-            points = np.c_[x,self.wavefs[idx,:,self.current_channel_idx]]
+            points = np.c_[x,self.gain*self.wavefs[idx,:,self.current_channel_idx]]
             pos.append(points)
             spike_ids.append([spike]*len(x))
 
@@ -208,24 +203,34 @@ class WaveformClusteringViewPlugin(IPlugin):
         controller.view_creator['WaveformClusteringView'] = create_my_view
 
         @connect
-        def on_gui_ready(sender, gui):
-
-            self.view = gui.get_view('WaveformClusteringView')
-
-            @controller.supervisor.actions.add(shortcut='f')
-            def next_channel():
-                v=gui.get_view('WaveformClusteringView')
-                if v:
-                    v.setNextChannelIdx()
-
-            @controller.supervisor.actions.add(shortcut='r')
-            def prev_channel():
-                v=gui.get_view('WaveformClusteringView')
-                if v:
-                    v.setPrevChannelIdx()
-
-        @connect
         def on_select_channel(sender,channel_id,key,button):
             self.view.setChannel(channel_id)
 
+        @connect
+        def on_view_attached(view, gui):
+            if isinstance(view, WaveformClusteringView):
 
+                @view.dock.add_button(icon='f105')
+                def nextChannelType(checked):
+                    # The checked argument is only used with buttons `checkable=True`
+                    view.setNextChannelIdx()
+
+                # The icon unicode can be found at https://fontawesome.com/icons?d=gallery
+                @view.dock.add_button(icon='f104')
+                def prevChannelType(checked):
+                    # The checked argument is only used with buttons `checkable=True`
+                    view.setPrevChannelIdx()
+
+                @view.actions.add(shortcut='f')
+                def next_channel():
+                    """Select Previous Channel Index"""
+                    v=gui.get_view('WaveformClusteringView')
+                    if v:
+                        v.setNextChannelIdx()
+
+                @view.actions.add(shortcut='r')
+                def prev_channel():
+                    """Select Next Channel Index"""
+                    v=gui.get_view('WaveformClusteringView')
+                    if v:
+                        v.setPrevChannelIdx()
