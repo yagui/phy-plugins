@@ -210,6 +210,8 @@ class WaveformClusteringViewPlugin(IPlugin):
         def on_view_attached(view, gui):
             if isinstance(view, WaveformClusteringView):
 
+                self.view = gui.get_view('WaveformClusteringView')
+
                 @view.dock.add_button(icon='f105')
                 def nextChannelType(checked):
                     # The checked argument is only used with buttons `checkable=True`
@@ -224,13 +226,9 @@ class WaveformClusteringViewPlugin(IPlugin):
                 @view.actions.add(shortcut='f')
                 def next_channel():
                     """Select Previous Channel Index"""
-                    v=gui.get_view('WaveformClusteringView')
-                    if v:
-                        v.setNextChannelIdx()
+                    self.view.setNextChannelIdx()
 
                 @view.actions.add(shortcut='r')
                 def prev_channel():
                     """Select Next Channel Index"""
-                    v=gui.get_view('WaveformClusteringView')
-                    if v:
-                        v.setPrevChannelIdx()
+                    self.view.setPrevChannelIdx()
